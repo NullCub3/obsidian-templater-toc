@@ -1,23 +1,4 @@
 // =====================================================================================================================================================================
-// FURTHER UPDATES TO PREVIOUS DANTEALI VERSIONS
-// Templater discussion: https://github.com/SilentVoid13/Templater/discussions/888
-// After my V2 update (https://github.com/SilentVoid13/Templater/discussions/888#discussioncomment-5523668) cr0Kz merged the two scripts and heavily refactored the code. 
-// Cr0Kz latest version (as of 20231005): https://github.com/SilentVoid13/Templater/discussions/888#discussioncomment-7024450
-// This version: https://github.com/SilentVoid13/Templater/discussions/888#discussioncomment-7204381
-//
-// Additional changes in this version:
-//  - Added additional code commenting - for my own understanding later when I inevitably come back and forget it all 😉.
-//    Not as clean and concise as cr0Kz any longer - sorry!
-//  - Added empty line at top of TOC, otherwise there was no separation between file content and TOC callout.
-//  - Added debugging (enabled/disabled by constant/switch at top of file) which cr0Kz had in his first version but removed in latest.
-//    Added additional debug messages to help me with development. Debug console accessible with Ctrl+Shift+I.
-//  - If a TOC already exists it will always be updated in the current location. If no existing TOC, default location is top of file (below
-//    any frontmatter). 
-//    Added switches to allow default location to be changed to: below the first header, or at cursor position.
-//  - Added switch (at top of file) to change from default Markdown-style links used in TOC to Wiki-style links.
-//  - Added switch to disable header level depth prompt and const to define default depth. If you know what level you will always want then easy to disable prompt.
-//
-// =====================================================================================================================================================================
 // FUNCTIONALITY
 // =============
 //
@@ -29,13 +10,13 @@ const deBug = 0;
 // If a TOC already exists it will be updated in the same location.
 // If no existing TOC then default location is top of file (below any frontmatter). OR...
 //   - Insert TOC below first header instead of top of file
-const insertBelowHeader = 0;
+const insertBelowHeader = 1;
 //   - Insert TOC at cursor position instead of top of file or below first header (overrides insertBelowHeader=1)
-const insertAtCursor = 1;
+const insertAtCursor = 0;
 //
 // TOC LINKS STYLE
 // Swap to using Wiki-style syntax for TOC links. By default links in TOC use the Markdown syntax.
-const useWikilinks = 0;
+const useWikilinks = 1;
 //
 // DISABLE LEVEL PROMPT
 // Disable prompt for user to select level depth to use in TOC.
@@ -43,6 +24,13 @@ const useWikilinks = 0;
 const levelDepthPromptDisable = 1;
 const levelDepthDefault = "6";
 //
+// CALLOUT OR HEADER
+// Set to 1 to use a standard list with a header style instead of the regular callout style.
+const use_header = 1;
+//
+// MINIMUM HEADER
+// The minimum level the table of contents will start at.
+const header_begin = 1;
 // =====================================================================================================================================================================
 
 // Utility function for debugging
@@ -54,8 +42,15 @@ const debugLog = (label, data) => {
 let curPosition = this.app.workspace.activeLeaf.view.editor.getCursor().line;
 debugLog("Cursor position", curPosition);
 
+const headerTOCstart = `## Table of Contents`;
+const calloutTOCstart = `>[!SUMMARY]+ Table of Contents`
+
 // Constants for TOC markers
-const markerTOCstart = '>[!SUMMARY]+ Table of Contents';
+if (use_header == 1) {
+  var markerTOCstart = headerTOCstart;
+} else {
+  var markerTOCstart = calloutTOCstart;
+}
 const markerTOCend = '%%ENDTOC%%';
 
 // Get the active file info and its metadata
@@ -113,26 +108,41 @@ if (levelDepthPromptDisable == 0) header_limit = await tp.system.prompt("Show Co
 const mdCacheListItems = mdCache.headings;
 debugLog("Headers", mdCacheListItems);
 
+if (use_header == 1) {
+  var lineBegin = ``;
+  newTOC.push(``);
+  debugLog("Used Header", lineBegin);
+} else {
+  var lineBegin = `> `;
+  debugLog("Didn't Use Header", lineBegin);
+}
+
 // Parse headings and create new TOC
 if (mdCacheListItems && mdCacheListItems.length > 0) {
   // Generate new TOC
   mdCacheListItems.forEach(item => {
-    var header_text = item.heading;
+    var header_url = item.heading.replace(/\[\[|\]\]/g, '');
+    var header_url = header_url.replace(/\|/g, ' ');
+    var header_text = item.heading.replace(/\[\[[^\|]*\||\[\[|\]\]/g, '');
     var header_level = item.level;
+    var indent_num = header_level - header_begin - 1
+    debugLog("Indent Number", indent_num);
 
-    if (header_level <= header_limit) {
+    if (header_text == `Table of Contents`) {
+    } else if (header_level <= header_begin) {
+    } else if (header_level <= header_limit) {
       if (useWikilinks == 1) {
         // Wiki-style
         let file_title = tp.file.title;
-        let header_url = header_text;
+        //let header_url = header_text;         
         let header_link = `[[${file_title}#${header_url}|${header_text}]]`
-        newTOC.push(`>${'    '.repeat(header_level - 1) + '- ' + header_link}`);
+        newTOC.push(`${lineBegin}${'    '.repeat(indent_num) + '- ' + header_link}`);
       } else {
         // Markdown-style 
         let file_title = tp.file.title.replace(/ /g, '%20');    // Replace spaces with '%20'
         let header_url = header_text.replace(/:/g, '').replace(/ /g, '%20');    // Remove ':', Replace spaces in urls with '%20'
         let header_link = `[${header_text}](${file_title}.md#${header_url})`;
-        newTOC.push(`>${'    '.repeat(header_level - 1) + '- ' + header_link}`);
+        newTOC.push(`${lineBegin}${'    '.repeat(indent_num) + '- ' + header_link}`);
       }
     }
   });
