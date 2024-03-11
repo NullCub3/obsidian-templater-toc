@@ -121,26 +121,51 @@ if (use_header == 1) {
 if (mdCacheListItems && mdCacheListItems.length > 0) {
   // Generate new TOC
   mdCacheListItems.forEach(item => {
-    var header_url = item.heading.replace(/\[\[|\]\]/g, '');
-    var header_url = header_url.replace(/\|/g, ' ');
-    var header_text = item.heading.replace(/\[\[[^\|]*\||\[\[|\]\]/g, '');
+
+    // Replace links with their display text
+    // Use regexr.com for an explanation of regex
+    var header_text = item.heading
+      .replace(/\[\[(?:[^\|\n]*?\|)?(.*?)\]\]/g, '$1') // Strip wikilinks
+      .replace(/\[(.*?)\]\(.*?\)/g, '$1'); // Strip markdown links
+
     var header_level = item.level;
-    var indent_num = header_level - header_begin - 1
+    var indent_num = header_level - header_begin - 1;
     debugLog("Indent Number", indent_num);
 
     if (header_text == `Table of Contents`) {
+      // Ignore the "Table of Contents" header
     } else if (header_level <= header_begin) {
+      // Ignore headers less than or equal to the minimum header number
     } else if (header_level <= header_limit) {
-      if (useWikilinks == 1) {
-        // Wiki-style
+      // Ignore headers greater than or equal to the maxmimum header number
+      // Assemble TOC entry
+      if (useWikilinks == 1) { // Wiki-style
         let file_title = tp.file.title;
-        //let header_url = header_text;         
+
+        // Strip special characters from header_url
+        var header_url = item.heading
+          .replace(/\[|\]/g, '')
+          .replace(/\|/g, ' ');
+
         let header_link = `[[${file_title}#${header_url}|${header_text}]]`
         newTOC.push(`${lineBegin}${'    '.repeat(indent_num) + '- ' + header_link}`);
-      } else {
-        // Markdown-style 
-        let file_title = tp.file.title.replace(/ /g, '%20');    // Replace spaces with '%20'
-        let header_url = header_text.replace(/:/g, '').replace(/ /g, '%20');    // Remove ':', Replace spaces in urls with '%20'
+      } else { // Markdown-style 
+        // Replace special characters:
+        // space = %20
+        // [ = %5B
+        // ] = %5D
+        let file_title = tp.file.title
+          .replace(/ /g, '%20')
+          .replace(/\[/g, '%5B')
+          .replace(/\]/g, '%5D');
+
+        // Remove ':', replace special characters again
+        let header_url = item.heading
+          .replace(/:/g, '')
+          .replace(/ /g, '%20')
+          .replace(/\[/g, '%5B')
+          .replace(/\]/g, '%5D');
+
         let header_link = `[${header_text}](${file_title}.md#${header_url})`;
         newTOC.push(`${lineBegin}${'    '.repeat(indent_num) + '- ' + header_link}`);
       }
