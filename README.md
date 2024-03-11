@@ -24,14 +24,14 @@ After that you can set a keybind to insert this template into your note, or just
 - Fixed having wikilinks in headings breaking the links in the table of contents
 - Fixed having both the display name and the full link of wikilinks in headings appear in the table of contents (even though that is what Obsidian does by default)
 - Moved the links and descriptions of changes from the script itself to this README.
+- Fixed having markdown links in headings
+- Cleaned up configs a bit
 
 
 ### Future Plans
 - When switching between header/callout styles, have the auto replace work on the old style.
-- Clean up my code additions
 - Double check all the options still work together
 - Have a github action automatically package the script into a markdown file for use in obsidian and publish a release
-- Clean up the configs a bit.
 - Have more of the options be able to be presented to the user when running the script.
 
 

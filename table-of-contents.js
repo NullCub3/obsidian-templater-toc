@@ -10,27 +10,40 @@ const deBug = 0;
 // If a TOC already exists it will be updated in the same location.
 // If no existing TOC then default location is top of file (below any frontmatter). OR...
 //   - Insert TOC below first header instead of top of file
-const insertBelowHeader = 1;
-//   - Insert TOC at cursor position instead of top of file or below first header (overrides insertBelowHeader=1)
-const insertAtCursor = 0;
+const insertBelowHeader = true;
+//   - Insert TOC at cursor position instead of top of file or below first header (overrides insertBelowHeader=true)
+const insertAtCursor = false;
 //
 // TOC LINKS STYLE
-// Swap to using Wiki-style syntax for TOC links. By default links in TOC use the Markdown syntax.
-const useWikilinks = 1;
+// Use Wiki-style syntax for TOC links instead of Markdown-style links
+const useWikilinks = true;
 //
 // DISABLE LEVEL PROMPT
-// Disable prompt for user to select level depth to use in TOC.
+// Disable prompt for user to select level depth to use in TOC
+const levelDepthPromptDisable = true;
 // Set default level depth too (1-6).
-const levelDepthPromptDisable = 1;
-const levelDepthDefault = "6";
-//
-// CALLOUT OR HEADER
-// Set to 1 to use a standard list with a header style instead of the regular callout style.
-const use_header = 1;
+const levelDepthDefault = 6;
 //
 // MINIMUM HEADER
-// The minimum level the table of contents will start at.
+// The minimum header number the table of contents will start after
+// e.g header_begin = 2 means H2 and H1 headers won't be included in the TOC
 const header_begin = 1;
+//
+// CALLOUT OR HEADER
+// Set to true to use a standard list with a header style instead of the regular callout style.
+const use_header = true;
+//
+// HEADER STYLE
+// Set to desired header name/style (when using headers)
+const headerTOCstart = `## Table of Contents`;
+// 
+// CALLOUT STYLE
+// Set to desired callout name/style (when using callouts)
+const calloutTOCstart = `> [!SUMMARY]+ Table of Contents`
+//
+// TOC END STRING
+// Set to desired string to mark the end of the TOC section.
+const markerTOCend = '%%ENDTOC%%';
 // =====================================================================================================================================================================
 
 // Utility function for debugging
@@ -42,16 +55,12 @@ const debugLog = (label, data) => {
 let curPosition = this.app.workspace.activeLeaf.view.editor.getCursor().line;
 debugLog("Cursor position", curPosition);
 
-const headerTOCstart = `## Table of Contents`;
-const calloutTOCstart = `>[!SUMMARY]+ Table of Contents`
-
 // Constants for TOC markers
-if (use_header == 1) {
+if (use_header) {
   var markerTOCstart = headerTOCstart;
 } else {
   var markerTOCstart = calloutTOCstart;
 }
-const markerTOCend = '%%ENDTOC%%';
 
 // Get the active file info and its metadata
 const activeFile = await this.app.workspace.getActiveFile();
@@ -103,12 +112,12 @@ let newTOC = [];
 
 // Get header limit from user
 let header_limit = levelDepthDefault;
-if (levelDepthPromptDisable == 0) header_limit = await tp.system.prompt("Show Contents Down to Which Header Level (1-6)?", levelDepthDefault);
+if (!levelDepthPromptDisable) header_limit = await tp.system.prompt("Show Contents Down to Which Header Level (1-6)?", levelDepthDefault.toString());
 
 const mdCacheListItems = mdCache.headings;
 debugLog("Headers", mdCacheListItems);
 
-if (use_header == 1) {
+if (use_header) {
   var lineBegin = ``;
   newTOC.push(``);
   debugLog("Used Header", lineBegin);
@@ -121,15 +130,14 @@ if (use_header == 1) {
 if (mdCacheListItems && mdCacheListItems.length > 0) {
   // Generate new TOC
   mdCacheListItems.forEach(item => {
-
     // Replace links with their display text
     // Use regexr.com for an explanation of regex
-    var header_text = item.heading
+    let header_text = item.heading
       .replace(/\[\[(?:[^\|\n]*?\|)?(.*?)\]\]/g, '$1') // Strip wikilinks
       .replace(/\[(.*?)\]\(.*?\)/g, '$1'); // Strip markdown links
 
-    var header_level = item.level;
-    var indent_num = header_level - header_begin - 1;
+    let header_level = item.level;
+    let indent_num = header_level - header_begin - 1;
     debugLog("Indent Number", indent_num);
 
     if (header_text == `Table of Contents`) {
@@ -139,17 +147,18 @@ if (mdCacheListItems && mdCacheListItems.length > 0) {
     } else if (header_level <= header_limit) {
       // Ignore headers greater than or equal to the maxmimum header number
       // Assemble TOC entry
-      if (useWikilinks == 1) { // Wiki-style
+      if (useWikilinks) {
+        // Wiki-style
         let file_title = tp.file.title;
 
         // Strip special characters from header_url
-        var header_url = item.heading
+        let header_url = item.heading
           .replace(/\[|\]/g, '')
           .replace(/\|/g, ' ');
 
-        let header_link = `[[${file_title}#${header_url}|${header_text}]]`
-        newTOC.push(`${lineBegin}${'    '.repeat(indent_num) + '- ' + header_link}`);
-      } else { // Markdown-style 
+        var header_link = `[[${file_title}#${header_url}|${header_text}]]`
+      } else {
+        // Markdown-style 
         // Replace special characters:
         // space = %20
         // [ = %5B
@@ -166,9 +175,11 @@ if (mdCacheListItems && mdCacheListItems.length > 0) {
           .replace(/\[/g, '%5B')
           .replace(/\]/g, '%5D');
 
-        let header_link = `[${header_text}](${file_title}.md#${header_url})`;
-        newTOC.push(`${lineBegin}${'    '.repeat(indent_num) + '- ' + header_link}`);
+        var header_link = `[${header_text}](${file_title}.md#${header_url})`;
       }
+
+      // Add TOC entry to TOC
+      newTOC.push(`${lineBegin}${'    '.repeat(indent_num) + '- ' + header_link}`);
     }
   });
 }
@@ -183,14 +194,14 @@ if (mdCacheListItems && mdCacheListItems.length > 0) {
 let insertPosition = hasYAML ? yamlEndLine + 2 : 0;    // Use +1 if not adding additional empty line to TOC before start marker
 debugLog("insertPosition - frontmatter", insertPosition);
 // Insert below first header
-if (insertBelowHeader == 1) {
+if (insertBelowHeader) {
   let firstHeaderFind = '#'.repeat(mdCacheListItems[0].level) + ' ' + mdCacheListItems[0].heading;
   debugLog("First Header String", firstHeaderFind);
   insertPosition = fileContentSplit.indexOf(firstHeaderFind) + 2;  // Use +1 if not adding additional empty line to TOC before start marker
   debugLog("insertPosition - header", insertPosition);
 }
 // Insert at cursor position if feature enabled
-if (insertAtCursor == 1) insertPosition = curPosition;
+if (insertAtCursor) insertPosition = curPosition;
 debugLog("insertPosition - cursor", insertPosition);
 // Insert at existing TOC location
 if (TOCstart !== -1) insertPosition = TOCstart;
@@ -212,3 +223,4 @@ if (newTOC.length > 0) {
 debugLog("TOC:", newTOC);
 // Update the file with the new content
 await app.vault.modify(activeFile, fileContentSplit.join('\n'));
+
