@@ -23,16 +23,21 @@ After that you can set a keybind to insert this template into your note, or just
 - Added an option to have a minimum header size to be added to the table of contents, useful if you exclusively use H1 as the note title like I do
 - Fixed having wikilinks in headings breaking the links in the table of contents
 - Fixed having both the display name and the full link of wikilinks in headings appear in the table of contents (even though that is what Obsidian does by default)
-- Moved the links and descriptions of changes from the script itself to this README.
-- Fixed having markdown links in headings
-- Cleaned up configs a bit
+- Moved the links and descriptions of changes from the script itself to this README
+- Fixed having markdown links in headings*
+- Cleaned up config a bit
+- Set up proper URI encoding for markdown-style links
+
+\* mostly. There's definitely still some issues but it's not as bad as it used to be.
 
 
 ### Future Plans
-- When switching between header/callout styles, have the auto replace work on the old style.
+- When switching between header/callout styles, have the auto replace work on the old style
 - Double check all the options still work together
 - Have a github action automatically package the script into a markdown file for use in obsidian and publish a release
-- Have more of the options be able to be presented to the user when running the script.
+- Have more of the options be able to be presented to the user when running the script
+- Configure script to use templater's user script system
+  - Or just simply split out the main functional section from the settings for easier updates, which might be easier? idk.
 
 
 ## Original Description From Script
