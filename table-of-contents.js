@@ -159,21 +159,9 @@ if (mdCacheListItems && mdCacheListItems.length > 0) {
         var header_link = `[[${file_title}#${header_url}|${header_text}]]`
       } else {
         // Markdown-style 
-        // Replace special characters:
-        // space = %20
-        // [ = %5B
-        // ] = %5D
-        let file_title = tp.file.title
-          .replace(/ /g, '%20')
-          .replace(/\[/g, '%5B')
-          .replace(/\]/g, '%5D');
-
-        // Remove ':', replace special characters again
-        let header_url = item.heading
-          .replace(/:/g, '')
-          .replace(/ /g, '%20')
-          .replace(/\[/g, '%5B')
-          .replace(/\]/g, '%5D');
+        // Encode file_title and header_url into proper URI for Markdown-style links
+        let file_title = encodeURIComponent(tp.file.title)
+        let header_url = encodeURIComponent(item.heading.replace(/:|\?|&/g, ''))
 
         var header_link = `[${header_text}](${file_title}.md#${header_url})`;
       }
