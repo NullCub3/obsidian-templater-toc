@@ -1,69 +1,26 @@
-async function table_of_contents(tp, app) {
-  // =====================================================================================================================================================================
-  // FUNCTIONALITY
-  // =============
-  //
-  // DEBUG MESSAGES
-  // Write useful debugging messages to console (Ctrl+Shiift+i)
-  const deBug = 0;
-  //
-  // TOC LOCATION
-  // If a TOC already exists it will be updated in the same location.
-  // If no existing TOC then default location is top of file (below any frontmatter). OR...
-  //   - Insert TOC below first header instead of top of file
-  const insertBelowHeader = true;
-  //   - Insert TOC at cursor position instead of top of file or below first header (overrides insertBelowHeader=true)
-  const insertAtCursor = false;
-  //
-  // TOC LINKS STYLE
-  // Use Wiki-style syntax for TOC links instead of Markdown-style links
-  const useWikilinks = true;
-  //
-  // DISABLE LEVEL PROMPT
-  // Disable prompt for user to select level depth to use in TOC
-  const levelDepthPromptDisable = true;
-  // Set default level depth too (1-6).
-  const levelDepthDefault = 6;
-  //
-  // MINIMUM HEADER
-  // The minimum header number the table of contents will start after
-  // e.g header_begin = 2 means H2 and H1 headers won't be included in the TOC
-  const header_begin = 1;
-  //
-  // CALLOUT OR HEADER
-  // Set to true to use a standard list with a header style instead of the regular callout style.
-  const use_header = true;
-  //
-  // HEADER STYLE
-  // Set to desired header name/style (when using headers)
-  const headerTOCstart = `## Table of Contents`;
-  //
-  // CALLOUT STYLE
-  // Set to desired callout name/style (when using callouts)
-  const calloutTOCstart = `> [!SUMMARY]+ Table of Contents`
-  //
-  // TOC END STRING
-  // Set to desired string to mark the end of the TOC section.
-  const markerTOCend = '%%ENDTOC%%';
-  // =====================================================================================================================================================================
-
-  console.log(tp)
-
+async function table_of_contents(tp, app, config) {
   // Utility function for debugging
   const debugLog = (label, data) => {
-    if (typeof deBug !== 'undefined' && deBug === 1) console.log(`${label} \n\n`, data);
+    if (typeof config.debug !== 'undefined' && config.debug === true) console.log(`${label} \n\n`, data);
   };
+
+  debugLog("tp", tp)
+  debugLog("app", app)
+
+  await app.commands.executeCommandById("editor::save-file");
 
   // Otherwise place in default location at top of file (below frontmatter) or below first header.
   let curPosition = app.workspace.activeLeaf.view.editor.getCursor().line;
   debugLog("Cursor position", curPosition);
 
   // Constants for TOC markers
-  if (use_header) {
-    var markerTOCstart = headerTOCstart;
+  if (config.use_header) {
+    var markerTOCstart = config.headerTOCstart;
   } else {
-    var markerTOCstart = calloutTOCstart;
+    var markerTOCstart = config.calloutTOCstart;
   }
+
+  await app.workspace.activeEditor.requestSave();
 
   // Get the active file info and its metadata
   const activeFile = await app.workspace.getActiveFile();
@@ -97,7 +54,7 @@ async function table_of_contents(tp, app) {
 
   // Find existing TOC start and end positions
   let TOCstart = fileContentSplit.indexOf(markerTOCstart);
-  let TOCend = fileContentSplit.indexOf(markerTOCend, TOCstart); // Start looking for occurrence after the array element holding start marker.
+  let TOCend = fileContentSplit.indexOf(config.markerTOCend, TOCstart); // Start looking for occurrence after the array element holding start marker.
   debugLog("TOCstart", TOCstart);
   debugLog("TOCend", TOCend);
 
@@ -114,13 +71,13 @@ async function table_of_contents(tp, app) {
   let newTOC = [];
 
   // Get header limit from user
-  let header_limit = levelDepthDefault;
-  if (!levelDepthPromptDisable) header_limit = await tp.system.prompt("Show Contents Down to Which Header Level (1-6)?", levelDepthDefault.toString());
+  let header_limit = config.levelDepthDefault;
+  if (!config.levelDepthPromptDisable) header_limit = await tp.system.prompt("Show Contents Down to Which Header Level (1-6)?", config.levelDepthDefault.toString());
 
   const mdCacheListItems = mdCache.headings;
   debugLog("Headers", mdCacheListItems);
 
-  if (use_header) {
+  if (config.use_header) {
     var lineBegin = ``;
     newTOC.push(``);
     debugLog("Used Header", lineBegin);
@@ -140,17 +97,17 @@ async function table_of_contents(tp, app) {
         .replace(/\[(.*?)\]\(.*?\)/g, '$1'); // Strip markdown links
 
       let header_level = item.level;
-      let indent_num = header_level - header_begin - 1;
+      let indent_num = header_level - config.header_begin - 1;
       debugLog("Indent Number", indent_num);
 
       if (header_text == `Table of Contents`) {
         // Ignore the "Table of Contents" header
-      } else if (header_level <= header_begin) {
+      } else if (header_level <= config.header_begin) {
         // Ignore headers less than or equal to the minimum header number
       } else if (header_level <= header_limit) {
         // Ignore headers greater than or equal to the maxmimum header number
         // Assemble TOC entry
-        if (useWikilinks) {
+        if (config.useWikilinks) {
           // Wiki-style
           let file_title = tp.file.title;
 
@@ -185,14 +142,14 @@ async function table_of_contents(tp, app) {
   let insertPosition = hasYAML ? yamlEndLine + 2 : 0;    // Use +1 if not adding additional empty line to TOC before start marker
   debugLog("insertPosition - frontmatter", insertPosition);
   // Insert below first header
-  if (insertBelowHeader) {
+  if (config.insertBelowHeader) {
     let firstHeaderFind = '#'.repeat(mdCacheListItems[0].level) + ' ' + mdCacheListItems[0].heading;
     debugLog("First Header String", firstHeaderFind);
     insertPosition = fileContentSplit.indexOf(firstHeaderFind) + 2;  // Use +1 if not adding additional empty line to TOC before start marker
     debugLog("insertPosition - header", insertPosition);
   }
   // Insert at cursor position if feature enabled
-  if (insertAtCursor) insertPosition = curPosition;
+  if (config.insertAtCursor) insertPosition = curPosition;
   debugLog("insertPosition - cursor", insertPosition);
   // Insert at existing TOC location
   if (TOCstart !== -1) insertPosition = TOCstart;
@@ -203,9 +160,9 @@ async function table_of_contents(tp, app) {
   //    the item to individual values.
   if (newTOC.length > 0) {
     // Insert the new TOC into the file content
-    //fileContentSplit.splice(insertPosition, 0, markerTOCstart, ...newTOC, "", markerTOCend);
+    //fileContentSplit.splice(insertPosition, 0, markerTOCstart, ...newTOC, "", config.markerTOCend);
     // Updated with an empty line before start marker, we need to adjust insert location to compensate
-    fileContentSplit.splice(insertPosition - 1, 0, "", markerTOCstart, ...newTOC, "", markerTOCend);
+    fileContentSplit.splice(insertPosition - 1, 0, "", markerTOCstart, ...newTOC, "", config.markerTOCend);
   } else if (TOCstart !== -1 && TOCend !== -1) {
     // Remove the markers when there are no headers
     fileContentSplit.splice(TOCstart, TOCend - TOCstart + 1);
@@ -214,6 +171,8 @@ async function table_of_contents(tp, app) {
   debugLog("TOC:", newTOC);
   // Update the file with the new content
   await app.vault.modify(activeFile, fileContentSplit.join('\n'));
+
+  return null;
 }
 
-module.exports = table_of_contents
+module.exports = table_of_contents;

@@ -1,4 +1,3 @@
-<%*
 const config = {
   // =============
   // FUNCTIONALITY
@@ -48,5 +47,8 @@ const config = {
   markerTOCend: '%%ENDTOC%%'
 }
 
-tp.user.table_of_contents(tp, this.app, config)
-%>
+function default_config() {
+  return config;
+}
+
+module.exports = default_config;
