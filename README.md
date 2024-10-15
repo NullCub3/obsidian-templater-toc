@@ -61,4 +61,3 @@ Once you insert the template into your note (or optionally use the hotkey you ju
 >    Added switches to allow default location to be changed to: below the first header, or at cursor position.
 >  - Added switch (at top of file) to change from default Markdown-style links used in TOC to Wiki-style links.
 >  - Added switch to disable header level depth prompt and const to define default depth. If you know what level you will always want then easy to disable prompt.
-
